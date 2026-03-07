@@ -1,0 +1,19 @@
+{
+  "name": "3d-gaussian-splat-renderer-viewer",
+  "private": false,
+  "version": "0.3.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "@sparkjsdev/spark": "0.1.10",
+    "three": "0.178.0"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  },
+  "description": "A lightweight, local-first WebGL viewer for 3D Gaussian splats (PLY/SPZ/SOG/SPLAT/KSPLAT) with Orbit/FPS controls and export tools."
+}
