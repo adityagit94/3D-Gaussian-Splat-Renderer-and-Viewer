@@ -177,7 +177,7 @@ Testing steps:
 1. Download dataset
 2. Open the live viewer
 3. Click **Select File**
-4. Load the `.splat` file
+4. Load the `.ply` file
 
 ---
 
