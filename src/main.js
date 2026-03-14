@@ -66,6 +66,8 @@ let currentBlobUrl = null;
 let bgOn = true;
 let flipped = false;
 
+const raycaster = new THREE.Raycaster();
+
 // FPS vertical movement (Q down, E up)
 let keyDownQ = false;
 let keyDownE = false;
@@ -135,29 +137,29 @@ function init() {
     focusAtPointer(e.clientX, e.clientY);
   });
 
-// Keyboard: add Q/E for down/up in FPS mode
-window.addEventListener("keydown", (e) => {
-  const t = e.target;
-  const tag = (t && t.tagName) ? t.tagName.toLowerCase() : "";
-  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  // Keyboard: add Q/E for down/up in FPS mode
+  window.addEventListener("keydown", (e) => {
+    const t = e.target;
+    const tag = (t && t.tagName) ? t.tagName.toLowerCase() : "";
+    if (tag === "input" || tag === "select" || tag === "textarea") return;
 
-  const k = e.key.toLowerCase();
-  if (k === "q") keyDownQ = true;
-  if (k === "e") keyDownE = true;
-});
+    const k = e.key.toLowerCase();
+    if (k === "q") keyDownQ = true;
+    if (k === "e") keyDownE = true;
+  });
 
-window.addEventListener("keyup", (e) => {
-  const k = e.key.toLowerCase();
-  if (k === "q") keyDownQ = false;
-  if (k === "e") keyDownE = false;
-});
+  window.addEventListener("keyup", (e) => {
+    const k = e.key.toLowerCase();
+    if (k === "q") keyDownQ = false;
+    if (k === "e") keyDownE = false;
+  });
 
-window.addEventListener("blur", () => {
-  keyDownQ = false;
-  keyDownE = false;
-});
+  window.addEventListener("blur", () => {
+    keyDownQ = false;
+    keyDownE = false;
+  });
 
-window.addEventListener("resize", onResize);
+  window.addEventListener("resize", onResize);
   enableDragAndDrop(renderer.domElement);
 
   applySpeed(parseFloat(speedEl.value));
@@ -220,6 +222,7 @@ function bindUI() {
   helpEl.addEventListener("click", () => helpModalEl.classList.remove("hidden"));
   helpCloseEl.addEventListener("click", () => helpModalEl.classList.add("hidden"));
   helpModalEl.addEventListener("click", (e) => { if (e.target === helpModalEl) helpModalEl.classList.add("hidden"); });
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape") helpModalEl.classList.add("hidden"); });
 }
 
 function enableDragAndDrop(target) {
@@ -243,6 +246,10 @@ async function loadLocalFile(file) {
       setStatus(`Loaded: ${file.name} (${mesh.numSplats ?? "?"} splats)`);
       autoCenterAndFrame();
     },
+    onError: (err) => {
+      console.error("SplatMesh load error:", err);
+      setStatus(`Error loading ${file.name}: ${err?.message ?? "unknown error"}`);
+    },
   });
 
   splatMesh.visible = false;
@@ -255,7 +262,7 @@ async function loadLocalFile(file) {
 function clearSplat() {
   if (splatMesh) {
     scene.remove(splatMesh);
-    if (typeof splatMesh.dispose === "function") { try { splatMesh.dispose(); } catch {} }
+    if (typeof splatMesh.dispose === "function") { try { splatMesh.dispose(); } catch (e) { console.warn("splatMesh.dispose() failed:", e); } }
     splatMesh = null;
   }
   if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
@@ -490,7 +497,6 @@ function focusAtPointer(clientX, clientY) {
   const x = ((clientX - rect.left) / rect.width) * 2 - 1;
   const y = -(((clientY - rect.top) / rect.height) * 2 - 1);
 
-  const raycaster = new THREE.Raycaster();
   raycaster.setFromCamera({ x, y }, camera);
   const hits = raycaster.intersectObject(splatMesh, true);
   if (!hits || hits.length === 0) return;
@@ -515,14 +521,13 @@ function animate() {
       pointerControls?.update(dt, camera);
       fpsMovement?.update(dt, camera);
 
-// Q/E vertical movement (down/up) in FPS mode
-if (keyDownQ || keyDownE) {
-  const up = camera.up.clone().normalize();
-  const speed = (fpsMovement?.moveSpeed ?? 1.0);
-  const dir = (keyDownE ? 1 : 0) - (keyDownQ ? 1 : 0);
-  camera.position.addScaledVector(up, dir * speed * dt);
-}
-
+      // Q/E vertical movement (down/up) in FPS mode
+      if (keyDownQ || keyDownE) {
+        const up = camera.up.clone().normalize();
+        const speed = (fpsMovement?.moveSpeed ?? 1.0);
+        const dir = (keyDownE ? 1 : 0) - (keyDownQ ? 1 : 0);
+        camera.position.addScaledVector(up, dir * speed * dt);
+      }
     }
     renderer.render(scene, camera);
   });
@@ -535,11 +540,9 @@ function onResize() {
   if (camera.isPerspectiveCamera) { camera.aspect = w / h; camera.updateProjectionMatrix(); }
   else {
     const aspect = w / h;
-    const frustumHeight = 2;
+    const frustumHeight = camera.top - camera.bottom;
     camera.left = -(frustumHeight * aspect) / 2;
     camera.right = (frustumHeight * aspect) / 2;
-    camera.top = frustumHeight / 2;
-    camera.bottom = -frustumHeight / 2;
     camera.updateProjectionMatrix();
   }
 }
